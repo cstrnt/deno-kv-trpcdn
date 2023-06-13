@@ -71,7 +71,7 @@ export const handler: Handlers = {
         });
       });
 
-      return new Response(JSON.stringify(cachedValue), {
+      return new Response(JSON.stringify(cachedValue.value), {
         headers: { "content-type": "application/json" },
       });
     }
