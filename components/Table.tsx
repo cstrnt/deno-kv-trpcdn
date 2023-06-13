@@ -1,6 +1,6 @@
 import { JSX } from "preact/jsx-runtime";
 
-const cn = (...classNames: (string | any)[]) =>
+export const cn = (...classNames: (string | any)[]) =>
   classNames.filter(Boolean).join(" ");
 
 const Table = (

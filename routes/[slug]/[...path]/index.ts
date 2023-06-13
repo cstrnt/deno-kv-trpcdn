@@ -18,9 +18,15 @@ export const handler: Handlers = {
     if (!project) {
       return new Response("Not found", { status: 404 });
     }
-    const projectDomain = new URL(project.domain);
+    const targetURL = new URL(project.domain);
     const headers = new Headers();
 
+    const currentUrl = new URL(req.url);
+
+    targetURL.pathname = targetURL.pathname +
+      currentUrl.pathname.replace(`/${slug}`, "");
+
+    // copy headers from request
     for (const [key, value] of req.headers.entries()) {
       if (key === "host") {
         continue;
@@ -28,13 +34,9 @@ export const handler: Handlers = {
       headers.set(key, value);
     }
 
-    const currentUrl = new URL(req.url);
-
-    projectDomain.pathname = projectDomain.pathname +
-      currentUrl.pathname.replace(`/${slug}`, "");
-
+    // copy query params from request
     for (const [key, value] of currentUrl.searchParams.entries()) {
-      projectDomain.searchParams.set(key, value);
+      targetURL.searchParams.set(key, value);
     }
     const queries = parseQueryUrl(currentUrl, slug);
 
@@ -76,10 +78,14 @@ export const handler: Handlers = {
       });
     }
 
-    const retrievedValue = await fetch(projectDomain, { headers });
+    const retrievedValue = await fetch(targetURL, { headers });
 
     const responseCopy = retrievedValue.clone();
     setTimeout(async () => {
+      // we don't want to cache errors
+      if (!responseCopy.ok) {
+        return;
+      }
       const data = await responseCopy.json();
       console.log("setting cache");
       logRequest({

@@ -169,7 +169,7 @@ export function getCache(
   return getValue<CacheValue>(["query_cache", projectSlug, queryName, input]);
 }
 
-export function purgeCache(
+export async function purgeCache(
   projectSlug: string,
   queryName: string,
   input?: string,
@@ -180,7 +180,11 @@ export function purgeCache(
     queryName,
     ...(input ? [input] : []),
   ];
-  return kv.delete(cacheKey);
+  const entriesToDelete = kv.list({ prefix: cacheKey });
+
+  for await (const { key } of entriesToDelete) {
+    await kv.delete(key);
+  }
 }
 
 export interface RequestLog {
@@ -239,4 +243,17 @@ export async function getRequestsByProjectId(projectId: string) {
   });
 
   return requests.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+}
+
+export async function getCachedQueriesForProject(projectSlug: string) {
+  const queryKeys: string[] = [];
+  const queries = kv.list<CacheValue>({
+    prefix: ["query_cache", projectSlug],
+  });
+
+  for await (const query of queries) {
+    queryKeys.push(query.key[2].toString());
+  }
+
+  return queryKeys;
 }

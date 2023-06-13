@@ -3,8 +3,11 @@ import type { Handlers, PageProps } from "$fresh/server.ts";
 import Head from "@/components/Head.tsx";
 import Layout from "@/components/Layout.tsx";
 import { SITE_WIDTH_STYLES } from "@/utils/constants.ts";
-import { getRequestsByProjectId, RequestLog } from "@/utils/db.ts";
-import { ComponentChild } from "preact";
+import {
+  getCachedQueriesForProject,
+  getRequestsByProjectId,
+  RequestLog,
+} from "@/utils/db.ts";
 import { DashboardState } from "./_middleware.ts";
 import {
   Table,
@@ -16,40 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/Table.tsx";
-
-interface RowProps {
-  title: string;
-  children?: ComponentChild;
-  text: string;
-  img?: string;
-}
-
-function Row(props: RowProps) {
-  return (
-    <div class="flex flex-wrap py-8">
-      {props.img && (
-        <img
-          height="48"
-          width="48"
-          src={props.img}
-          alt="user avatar"
-          class="rounded-full"
-        />
-      )}
-      <div class="px-4">
-        <div class="flex flex-wrap justify-between">
-          <span>
-            <strong>{props.title}</strong>
-          </span>
-          {props.children && <span>{props.children}</span>}
-        </div>
-        <p>
-          {props.text}
-        </p>
-      </div>
-    </div>
-  );
-}
+import PurgeInput from "../../islands/PurgeInput.tsx";
 
 type DashboardProps = {
   requests: RequestLog[];
@@ -57,6 +27,7 @@ type DashboardProps = {
   cacheHitRate: number;
   averageCacheExecutionTime: number;
   averageUncachedExecutionTime: number;
+  queryKeys: string[];
 } & DashboardState;
 
 export const handler: Handlers<DashboardProps, DashboardState> = {
@@ -83,6 +54,8 @@ export const handler: Handlers<DashboardProps, DashboardState> = {
       0,
     ) / uncachedRequests.length;
 
+    const queryKeys = await getCachedQueriesForProject(ctx.state.project.slug);
+
     return ctx.render({
       requests,
       averageExecutionTime,
@@ -93,6 +66,7 @@ export const handler: Handlers<DashboardProps, DashboardState> = {
       averageUncachedExecutionTime: isNaN(averageUncachedExecutionTime)
         ? 0
         : averageUncachedExecutionTime,
+      queryKeys,
       ...ctx.state,
     });
   },
@@ -103,15 +77,26 @@ export default function DashboardPage(props: PageProps<DashboardProps>) {
 
   return (
     <>
-      <Head title={props.data.project.name} href={props.url.href} />
+      <Head title={project.name} href={props.url.href} />
       <Layout session={props.data.sessionId}>
-        <div class={`${SITE_WIDTH_STYLES} flex-1 px-4`}>
-          <Row
-            title={props.data.project.name}
-            text={`Domain: ${props.data.project.domain}`}
+        <div class={`${SITE_WIDTH_STYLES} flex-1 px-4 space-y-4 py-8`}>
+          <h1 className="text-4xl font-bold">Dashboard</h1>
+          <p>
+            <strong>Project Name:</strong> {project.name}
+            <br />
+            <strong>Project Slug:</strong> {project.slug}
+            <br />
+            <strong>Project Domain:</strong> {project.domain}
+            <br />
+            <strong>
+              Your tRPC Url: {" "}
+            </strong>
+            https://trpcdn.deno.dev/{project.slug}
+          </p>
+          <PurgeInput
+            projectId={project.id}
+            queryKeys={props.data.queryKeys}
           />
-          <pre>{JSON.stringify(project, null, 2)}</pre>
-
           <p>
             Cache Hit Rate: {props.data.cacheHitRate.toFixed(2)}% (
             {props.data.averageCacheExecutionTime.toFixed(2)} ms) | Uncached: (
@@ -123,7 +108,7 @@ export default function DashboardPage(props: PageProps<DashboardProps>) {
                 <TableHead>Query Key</TableHead>
                 <TableHead>Input</TableHead>
                 <TableHead>Execution Time</TableHead>
-                <TableHead>Cached</TableHead>
+                <TableHead>Cache Hit</TableHead>
                 <TableHead className="text-right">Date</TableHead>
               </TableRow>
             </TableHeader>
@@ -133,11 +118,16 @@ export default function DashboardPage(props: PageProps<DashboardProps>) {
                   <TableCell className="font-medium">
                     {request.queryName}
                   </TableCell>
-                  <TableCell className="ellipsis max-w-[150px]">
+                  <TableCell
+                    className="text-ellipsis overflow-hidden max-w-[150px]"
+                    title={request.rawInput}
+                  >
                     {request.rawInput}
                   </TableCell>
                   <TableCell>{request.timeInMs} ms</TableCell>
-                  <TableCell>{request.isCached ? "✅" : "❌"}</TableCell>
+                  <TableCell>
+                    {request.isCached ? "✅" : "❌"}
+                  </TableCell>
                   <TableCell className="text-right">
                     {request.createdAt.toLocaleString()}
                   </TableCell>
