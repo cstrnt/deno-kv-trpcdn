@@ -148,13 +148,18 @@ type CacheValue = {
   value: unknown;
 };
 
-export function setCache({ input, projectSlug, queryName, value }: {
+export async function setCache({ input, projectSlug, queryName, value }: {
   projectSlug: string;
   queryName: string;
   input: string;
   value: unknown;
 }) {
-  const cacheKey = ["query_cache", projectSlug, queryName, input];
+  const cacheKey = [
+    "query_cache",
+    projectSlug,
+    queryName,
+    input,
+  ];
   return kv.set(cacheKey, {
     createdAt: Date.now(),
     value,
@@ -166,7 +171,12 @@ export function getCache(
   queryName: string,
   input: string,
 ) {
-  return getValue<CacheValue>(["query_cache", projectSlug, queryName, input]);
+  return getValue<CacheValue>([
+    "query_cache",
+    projectSlug,
+    queryName,
+    input,
+  ]);
 }
 
 export async function purgeCache(
@@ -180,6 +190,12 @@ export async function purgeCache(
     queryName,
     ...(input ? [input] : []),
   ];
+
+  if (input != null) {
+    await kv.delete(cacheKey);
+    return;
+  }
+
   const entriesToDelete = kv.list({ prefix: cacheKey });
 
   for await (const { key } of entriesToDelete) {

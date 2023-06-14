@@ -19,7 +19,7 @@ export async function handler(
   _req: Request,
   ctx: MiddlewareHandlerContext<DashboardState>,
 ) {
-  const redirectResponse = redirect("/login");
+  const redirectResponse = redirect("/signin");
 
   if (!ctx.state.sessionId) return redirectResponse;
   const user = await getUserBySessionId(ctx.state.sessionId);

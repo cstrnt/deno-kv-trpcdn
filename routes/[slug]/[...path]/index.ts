@@ -54,9 +54,11 @@ export const handler: Handlers = {
 
     if (cachedValue) {
       // if cache is older than 5 minutes, purge it and return old value once more
-      if (Date.now() - cachedValue.createdAt > project.cacheTtl) {
+      // if (Date.now() - cachedValue.createdAt > project.cacheTtl) {
+      if (Date.now() - cachedValue.createdAt > 2000) {
         console.log("Cache expired");
         setTimeout(() => {
+          console.log("purging cache");
           purgeCache(slug, queryName, rawInput);
         });
       } else {
@@ -74,7 +76,9 @@ export const handler: Handlers = {
       });
 
       return new Response(JSON.stringify(cachedValue.value), {
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+        },
       });
     }
 
@@ -103,6 +107,12 @@ export const handler: Handlers = {
       });
     }, 1);
     console.log("Returning fresh value");
-    return retrievedValue;
+
+    const responseHeaders = new Headers(retrievedValue.headers);
+
+    // copy headers from response so we can add CORS headers
+    return new Response(retrievedValue.body, {
+      headers: responseHeaders,
+    });
   },
 };
