@@ -54,8 +54,7 @@ export const handler: Handlers = {
 
     if (cachedValue) {
       // if cache is older than 5 minutes, purge it and return old value once more
-      // if (Date.now() - cachedValue.createdAt > project.cacheTtl) {
-      if (Date.now() - cachedValue.createdAt > 2000) {
+      if (Date.now() - cachedValue.createdAt > project.cacheTtl) {
         console.log("Cache expired");
         setTimeout(() => {
           console.log("purging cache");
