@@ -7,13 +7,39 @@ import {
   setCache,
 } from "@/utils/db.ts";
 import { parseQueryUrl } from "../../../utils/trpc.ts";
+import { satisfies } from "https://deno.land/std@0.178.0/semver/mod.ts";
+
+const enum INTERNAL_CACHE_HEADER_NAMES {
+  CACHE_HIT = "x-trpcdn-cache-hit",
+  CACHE_TTL = "x-trpcdn-cache-ttl",
+  TIMINGS = "x-trpcdn-timings",
+}
+
+const enum TRPCDN_CACHE_HIT_VALUE {
+  HIT = "hit",
+  MISS = "miss",
+}
+
+type TimingIntervals = {
+  loadInternalData: number;
+  readCache: number;
+  loadRemoteData: number;
+};
 
 export const handler: Handlers = {
   async GET(req, ctx) {
+    const timings = {
+      loadInternalData: 0,
+      readCache: 0,
+      loadRemoteData: 0,
+    } satisfies TimingIntervals;
+
     const now = Date.now();
     const { slug } = ctx.params;
 
     const project = await getProjectBySlug(slug);
+
+    timings.loadInternalData = Date.now() - now;
 
     if (!project) {
       return new Response("Not found", { status: 404 });
@@ -52,6 +78,8 @@ export const handler: Handlers = {
       rawInput,
     );
 
+    timings.readCache = Date.now() - now - timings.loadInternalData;
+
     if (cachedValue) {
       // if cache is older than 5 minutes, purge it and return old value once more
       if (Date.now() - cachedValue.createdAt > project.cacheTtl) {
@@ -77,11 +105,16 @@ export const handler: Handlers = {
       return new Response(JSON.stringify(cachedValue.value), {
         headers: {
           "content-type": "application/json",
+          [INTERNAL_CACHE_HEADER_NAMES.CACHE_HIT]: TRPCDN_CACHE_HIT_VALUE.HIT,
+          [INTERNAL_CACHE_HEADER_NAMES.CACHE_TTL]: project.cacheTtl.toString(),
+          [INTERNAL_CACHE_HEADER_NAMES.TIMINGS]: JSON.stringify(timings),
         },
       });
     }
 
     const retrievedValue = await fetch(targetURL, { headers });
+    timings.loadRemoteData = Date.now() - now - timings.loadInternalData -
+      timings.readCache;
 
     const responseCopy = retrievedValue.clone();
     setTimeout(async () => {
@@ -116,6 +149,20 @@ export const handler: Handlers = {
     console.log("Returning fresh value");
 
     const responseHeaders = new Headers(retrievedValue.headers);
+
+    responseHeaders.set(
+      INTERNAL_CACHE_HEADER_NAMES.CACHE_HIT,
+      TRPCDN_CACHE_HIT_VALUE.MISS,
+    );
+    responseHeaders.set(
+      INTERNAL_CACHE_HEADER_NAMES.CACHE_TTL,
+      project.cacheTtl.toString(),
+    );
+
+    responseHeaders.set(
+      INTERNAL_CACHE_HEADER_NAMES.TIMINGS,
+      JSON.stringify(timings),
+    );
 
     // copy headers from response so we can add CORS headers
     return new Response(retrievedValue.body, {
