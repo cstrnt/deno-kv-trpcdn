@@ -7,12 +7,12 @@ import {
   setCache,
 } from "@/utils/db.ts";
 import { parseQueryUrl } from "../../../utils/trpc.ts";
-import { satisfies } from "https://deno.land/std@0.178.0/semver/mod.ts";
 
 const enum INTERNAL_CACHE_HEADER_NAMES {
   CACHE_HIT = "x-trpcdn-cache-hit",
   CACHE_TTL = "x-trpcdn-cache-ttl",
   TIMINGS = "x-trpcdn-timings",
+  CACHE_TIME = "x-trpcdn-cache-time",
 }
 
 const enum TRPCDN_CACHE_HIT_VALUE {
@@ -106,8 +106,11 @@ export const handler: Handlers = {
         headers: {
           "content-type": "application/json",
           [INTERNAL_CACHE_HEADER_NAMES.CACHE_HIT]: TRPCDN_CACHE_HIT_VALUE.HIT,
-          [INTERNAL_CACHE_HEADER_NAMES.CACHE_TTL]: project.cacheTtl.toString(),
+          [INTERNAL_CACHE_HEADER_NAMES.CACHE_TTL]: (project.cacheTtl / 1000)
+            .toFixed(0),
           [INTERNAL_CACHE_HEADER_NAMES.TIMINGS]: JSON.stringify(timings),
+          [INTERNAL_CACHE_HEADER_NAMES.CACHE_TIME]: ((Date.now() -
+            cachedValue.createdAt) / 1000).toFixed(0),
         },
       });
     }
