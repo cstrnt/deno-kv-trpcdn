@@ -66,7 +66,10 @@ function Footer(props: JSX.HTMLAttributes<HTMLElement>) {
       } `}
     >
       <span>
-        <strong>{SITE_NAME}</strong>
+        <strong>
+          {SITE_NAME}
+        </strong>{" "}
+        by <a href="https://github.com/cstrnt">@cstrnt</a>
       </span>
       {props.children}
     </footer>
@@ -80,10 +83,10 @@ interface LayoutProps {
 
 export default function Layout(props: LayoutProps) {
   const headerNavItems = [
-    {
-      href: "/pricing",
-      inner: "Pricing",
-    },
+    // {
+    //   href: "/pricing",
+    //   inner: "Pricing",
+    // },
     props.session
       ? {
         href: "/account",
@@ -108,10 +111,10 @@ export default function Layout(props: LayoutProps) {
     //   href: "/stats",
     //   inner: "Stats",
     // },
-    {
-      href: "/blog",
-      inner: "Blog",
-    },
+    // {
+    //   href: "/blog",
+    //   inner: "Blog",
+    // },
     {
       inner: "Github",
       href: "https://github.com/cstrnt/trpcdn",

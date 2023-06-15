@@ -293,5 +293,5 @@ export async function getCachedQueriesForProject(projectSlug: string) {
     queryKeys.push(query.key[2].toString());
   }
 
-  return queryKeys;
+  return Array.from(new Set(queryKeys));
 }
