@@ -89,7 +89,14 @@ export const handler: Handlers = {
       if (!responseCopy.ok) {
         return;
       }
+
       const data = await responseCopy.json();
+
+      // we don't want to cache errors
+      if (data.error) {
+        return;
+      }
+
       console.log("setting cache");
       logRequest({
         isCached: false,
@@ -98,6 +105,7 @@ export const handler: Handlers = {
         timeInMs: Date.now() - now,
         rawInput,
       });
+
       setCache({
         projectSlug: slug,
         queryName,
