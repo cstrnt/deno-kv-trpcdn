@@ -6,21 +6,24 @@ import {
   purgeCache,
   setCache,
 } from "@/utils/db.ts";
-import { parseQueryUrl } from "../../../utils/trpc.ts";
+import { parseQueryUrl } from "@/utils/trpc.ts";
+import { cachified } from "@/utils/queryCache.ts";
 
 const enum INTERNAL_CACHE_HEADER_NAMES {
   CACHE_HIT = "x-trpcdn-cache-hit",
   CACHE_TTL = "x-trpcdn-cache-ttl",
   TIMINGS = "x-trpcdn-timings",
   CACHE_TIME = "x-trpcdn-cache-time",
+  HIT_QUERIES = "x-trpcdn-hit-queries",
 }
 
 const enum TRPCDN_CACHE_HIT_VALUE {
-  HIT = "hit",
-  MISS = "miss",
+  HIT = "HIT",
+  MISS = "MISS",
+  PARTIAL = "PARTIAL",
 }
 
-type TimingIntervals = {
+export type TimingIntervals = {
   loadInternalData: number;
   readCache: number;
   loadRemoteData: number;
@@ -44,13 +47,10 @@ export const handler: Handlers = {
     if (!project) {
       return new Response("Not found", { status: 404 });
     }
-    const targetURL = new URL(project.domain);
+
     const headers = new Headers();
 
     const currentUrl = new URL(req.url);
-
-    targetURL.pathname = targetURL.pathname +
-      currentUrl.pathname.replace(`/${slug}`, "");
 
     // copy headers from request
     for (const [key, value] of req.headers.entries()) {
@@ -60,116 +60,87 @@ export const handler: Handlers = {
       headers.set(key, value);
     }
 
-    // copy query params from request
-    for (const [key, value] of currentUrl.searchParams.entries()) {
-      targetURL.searchParams.set(key, value);
-    }
     const queries = parseQueryUrl(currentUrl, slug);
+    const results = await Promise.all(
+      queries.map(({ queryName, rawInput }) =>
+        cachified({
+          ttl: project.cacheTtl,
+          getCacheFunction: async () => {
+            const cachedValue = await getCache(
+              slug,
+              queryName,
+              rawInput,
+            );
 
-    if (queries.length > 1) {
-      return new Response("Batch queries not supported", { status: 400 });
-    }
+            return cachedValue;
+          },
+          persistFunction: async (value) => {
+            await setCache({
+              projectSlug: slug,
+              queryName,
+              input: rawInput,
+              value,
+            });
+          },
+          getFreshValueFunction: async () => {
+            const now = Date.now();
 
-    const { rawInput, queryName } = queries[0];
+            const targetUrl = new URL(
+              project.domain,
+            );
+            targetUrl.pathname = targetUrl.pathname + "/" + queryName;
+            targetUrl.searchParams.set("input", rawInput);
 
-    const cachedValue = await getCache(
-      slug,
-      queryName,
-      rawInput,
+            const response = await fetch(targetUrl, { headers });
+            timings.loadRemoteData = Date.now() - now;
+            return response.json();
+          },
+          meta: { queryName, rawInput },
+        })
+      ),
     );
 
-    timings.readCache = Date.now() - now - timings.loadInternalData;
+    // add timings
+    timings.loadRemoteData += Math.max(
+      ...results.map((r) => r.timings.loadRemoteData),
+    );
+    timings.readCache += Math.max(
+      ...results.map((r) => r.timings.readCache),
+    );
 
-    if (cachedValue) {
-      // if cache is older than 5 minutes, purge it and return old value once more
-      if (Date.now() - cachedValue.createdAt > project.cacheTtl) {
-        console.log("Cache expired");
-        setTimeout(() => {
-          console.log("purging cache");
-          purgeCache(slug, queryName, rawInput);
-        });
-      } else {
-        console.log("cached value");
-      }
+    const returnValue = results.length === 1
+      ? results[0].value.value
+      : results.map((r) => r.value.value);
 
-      setTimeout(() => {
+    const cachedQueryCount = results.filter((r) => r.isCached).length;
+
+    setTimeout(() => {
+      Promise.all(results.map((r) => {
         logRequest({
-          isCached: true,
+          isCached: r.isCached,
+          queryName: r.meta.queryName,
           projectId: project.id,
-          queryName,
-          timeInMs: Date.now() - now,
-          rawInput,
+          timeInMs: r.endTime - now,
+          rawInput: r.meta.rawInput,
         });
-      });
+      }));
+    });
 
-      return new Response(JSON.stringify(cachedValue.value), {
-        headers: {
-          "content-type": "application/json",
-          [INTERNAL_CACHE_HEADER_NAMES.CACHE_HIT]: TRPCDN_CACHE_HIT_VALUE.HIT,
-          [INTERNAL_CACHE_HEADER_NAMES.CACHE_TTL]: (project.cacheTtl / 1000)
-            .toFixed(0),
-          [INTERNAL_CACHE_HEADER_NAMES.TIMINGS]: JSON.stringify(timings),
-          [INTERNAL_CACHE_HEADER_NAMES.CACHE_TIME]: ((Date.now() -
-            cachedValue.createdAt) / 1000).toFixed(0),
-        },
-      });
-    }
-
-    const retrievedValue = await fetch(targetURL, { headers });
-    timings.loadRemoteData = Date.now() - now - timings.loadInternalData -
-      timings.readCache;
-
-    const responseCopy = retrievedValue.clone();
-    setTimeout(async () => {
-      // we don't want to cache errors
-      if (!responseCopy.ok) {
-        return;
-      }
-
-      const data = await responseCopy.json();
-
-      // we don't want to cache errors
-      if (data.error) {
-        return;
-      }
-
-      console.log("setting cache");
-      logRequest({
-        isCached: false,
-        projectId: project.id,
-        queryName,
-        timeInMs: Date.now() - now,
-        rawInput,
-      });
-
-      setCache({
-        projectSlug: slug,
-        queryName,
-        input: rawInput,
-        value: data,
-      });
-    }, 1);
-    console.log("Returning fresh value");
-
-    const responseHeaders = new Headers(retrievedValue.headers);
-
-    responseHeaders.set(
-      INTERNAL_CACHE_HEADER_NAMES.CACHE_HIT,
-      TRPCDN_CACHE_HIT_VALUE.MISS,
-    );
-    responseHeaders.set(
-      INTERNAL_CACHE_HEADER_NAMES.CACHE_TTL,
-      project.cacheTtl.toString(),
-    );
-
-    responseHeaders.set(
-      INTERNAL_CACHE_HEADER_NAMES.TIMINGS,
-      JSON.stringify(timings),
-    );
-
-    // copy headers from response so we can add CORS headers
-    return new Response(retrievedValue.body, {
-      headers: responseHeaders,
+    return new Response(JSON.stringify(returnValue), {
+      headers: {
+        "content-type": "application/json",
+        [INTERNAL_CACHE_HEADER_NAMES.CACHE_HIT]: cachedQueryCount === 0
+          ? TRPCDN_CACHE_HIT_VALUE.MISS
+          : cachedQueryCount === results.length
+          ? TRPCDN_CACHE_HIT_VALUE.HIT
+          : TRPCDN_CACHE_HIT_VALUE.PARTIAL,
+        [INTERNAL_CACHE_HEADER_NAMES.CACHE_TTL]: (project.cacheTtl / 1000)
+          .toFixed(0),
+        [INTERNAL_CACHE_HEADER_NAMES.TIMINGS]: JSON.stringify(timings),
+        [INTERNAL_CACHE_HEADER_NAMES.HIT_QUERIES]: results.filter((r) =>
+          r.isCached
+        ).map((r) => r.meta.queryName).join(","),
+      },
     });
   },
 };

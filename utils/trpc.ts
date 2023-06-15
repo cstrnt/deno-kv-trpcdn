@@ -18,6 +18,6 @@ export function parseQueryUrl(url: URL, projectSlug: string) {
   return queries.map((queryName, index) => ({
     queryName,
     input: parsedInput[index],
-    rawInput: input,
+    rawInput: JSON.stringify(parsedInput[index]),
   }));
 }

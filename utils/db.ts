@@ -165,7 +165,7 @@ export function getProjectBySlug(slug: string) {
   return getValue<Project>(["projects_by_slug", slug]);
 }
 
-type CacheValue = {
+export type CacheValue = {
   createdAt: number;
   value: unknown;
 };
