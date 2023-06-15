@@ -1,6 +1,6 @@
 import { useRef } from "preact/hooks";
 import { BUTTON_STYLES, INPUT_STYLES } from "../utils/constants.ts";
-import { cn } from "../components/Table.tsx";
+import { cn } from "@/utils/cn.ts";
 
 type Props = {
   projectId: string;

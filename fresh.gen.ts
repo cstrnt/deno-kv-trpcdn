@@ -20,11 +20,12 @@ import * as $13 from "./routes/callback.ts";
 import * as $14 from "./routes/create-project/_middleware.ts";
 import * as $15 from "./routes/create-project/index.tsx";
 import * as $16 from "./routes/dashboard/_middleware.ts";
-import * as $17 from "./routes/dashboard/index.tsx";
-import * as $18 from "./routes/index.tsx";
-import * as $19 from "./routes/pricing.tsx";
-import * as $20 from "./routes/signin.ts";
-import * as $21 from "./routes/signout.ts";
+import * as $17 from "./routes/dashboard/edit.tsx";
+import * as $18 from "./routes/dashboard/index.tsx";
+import * as $19 from "./routes/index.tsx";
+import * as $20 from "./routes/pricing.tsx";
+import * as $21 from "./routes/signin.ts";
+import * as $22 from "./routes/signout.ts";
 import * as $$0 from "./islands/PurgeInput.tsx";
 
 const manifest = {
@@ -46,11 +47,12 @@ const manifest = {
     "./routes/create-project/_middleware.ts": $14,
     "./routes/create-project/index.tsx": $15,
     "./routes/dashboard/_middleware.ts": $16,
-    "./routes/dashboard/index.tsx": $17,
-    "./routes/index.tsx": $18,
-    "./routes/pricing.tsx": $19,
-    "./routes/signin.ts": $20,
-    "./routes/signout.ts": $21,
+    "./routes/dashboard/edit.tsx": $17,
+    "./routes/dashboard/index.tsx": $18,
+    "./routes/index.tsx": $19,
+    "./routes/pricing.tsx": $20,
+    "./routes/signin.ts": $21,
+    "./routes/signout.ts": $22,
   },
   islands: {
     "./islands/PurgeInput.tsx": $$0,

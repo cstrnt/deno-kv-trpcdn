@@ -1,7 +1,5 @@
 import { JSX } from "preact/jsx-runtime";
-
-export const cn = (...classNames: (string | any)[]) =>
-  classNames.filter(Boolean).join(" ");
+import { cn } from "@/utils/cn.ts";
 
 const Table = (
   { className, ...props }: JSX.HTMLAttributes<HTMLTableElement>,

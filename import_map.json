@@ -17,6 +17,8 @@
     "feed": "https://esm.sh/feed@4.2.2",
     "zod": "https://esm.sh/zod@3.21.4",
     "fresh_charts/": "https://deno.land/x/fresh_charts@0.2.1/",
-    "deno_kv_oauth": "https://deno.land/x/deno_kv_oauth@v0.1.8-beta/mod.ts"
+    "deno_kv_oauth": "https://deno.land/x/deno_kv_oauth@v0.1.8-beta/mod.ts",
+    "icons/": "https://deno.land/x/tabler_icons_tsx@0.0.3/",
+    "cva": "https://esm.sh/class-variance-authority@0.6.0"
   }
 }

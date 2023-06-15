@@ -135,6 +135,28 @@ export function createProject(initProject: InitProject) {
     .commit();
 }
 
+export async function updateProject(
+  updatePayload: Pick<Project, "slug"> & Partial<InitProject>,
+) {
+  const project = await getProjectBySlug(updatePayload.slug);
+  if (!project) throw new Error(`Project not found: ${updatePayload.slug}`);
+
+  const projectsKey = ["projects", project.id];
+  const projectsBySlug = ["projects_by_slug", project.slug];
+  const projectsByUser = ["projects_by_user", project.ownerId];
+
+  const newProject = {
+    ...project,
+    ...updatePayload,
+  };
+
+  return kv.atomic()
+    .set(projectsKey, newProject)
+    .set(projectsBySlug, newProject)
+    .set(projectsByUser, newProject)
+    .commit();
+}
+
 export function getProjectByUserId(userId: string) {
   return getValue<Project>(["projects_by_user", userId]);
 }

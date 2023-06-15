@@ -18,8 +18,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/Table.tsx";
+} from "@/components/ui/Table.tsx";
 import PurgeInput from "../../islands/PurgeInput.tsx";
+import EditIcon from "icons/tsx/edit.tsx";
 
 type DashboardProps = {
   requests: RequestLog[];
@@ -80,7 +81,13 @@ export default function DashboardPage(props: PageProps<DashboardProps>) {
       <Head title={project.name} href={props.url.href} />
       <Layout session={props.data.sessionId}>
         <div class={`${SITE_WIDTH_STYLES} flex-1 px-4 space-y-4 py-8`}>
-          <h1 className="text-4xl font-bold">Dashboard</h1>
+          <div className="flex justify-between">
+            <h1 className="text-4xl font-bold">Dashboard</h1>
+            <a href="/dashboard/edit" className="text-xl flex space-x-2">
+              <span>Edit</span>
+              <EditIcon />
+            </a>
+          </div>
           <p>
             <strong>Project Name:</strong> {project.name}
             <br />
