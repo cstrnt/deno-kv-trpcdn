@@ -3,7 +3,6 @@ import {
   getCache,
   getProjectBySlug,
   logRequest,
-  purgeCache,
   setCache,
 } from "@/utils/db.ts";
 import { parseQueryUrl } from "@/utils/trpc.ts";

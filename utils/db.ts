@@ -198,7 +198,7 @@ export function getCache(
     projectSlug,
     queryName,
     input,
-  ]);
+  ], { consistency: "eventual" });
 }
 
 export async function purgeCache(
