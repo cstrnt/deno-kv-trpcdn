@@ -162,7 +162,9 @@ export function getProjectByUserId(userId: string) {
 }
 
 export function getProjectBySlug(slug: string) {
-  return getValue<Project>(["projects_by_slug", slug]);
+  return getValue<Project>(["projects_by_slug", slug], {
+    consistency: "eventual",
+  });
 }
 
 export type CacheValue = {
